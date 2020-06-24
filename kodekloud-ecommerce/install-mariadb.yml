@@ -1,0 +1,24 @@
+- name: Install MariaDB
+  hosts: test
+  become: yes
+  become_user: root
+  tasks:
+    - name: Install MariaDB
+      yum: 
+        name: mariadb-server
+        state: present
+    - name: Start MariaDB
+      service: 
+        name: mariadb
+        state: started
+    - name: Enable MariaDB
+      systemd:
+        name: mariadb
+        state: started
+    - name: Install MySQL-python
+      yum: 
+        name: MySQL-python
+    - name: Configure Firewall for DB
+      command: firewall-cmd --permanent --zone=public --add-port=3306/tcp
+    - name: Reload DB Firewall
+      command: firewall-cmd --reload

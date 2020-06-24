@@ -1,0 +1,134 @@
+- name: Install and Configure Firewall on All Node.
+  hosts: all
+  tasks:
+    - name: Install Firewall
+      yum: 
+        name: firewalld
+        state: present
+    - name: Start Firewall
+      service: 
+        name: firewalld
+        state: started
+    - name: Enable Firewall
+      systemd:
+        name: firewalld
+        state: started
+    - name: Configure Firewall for SSH Connection
+      command: firewall-cmd --permanent --add-service=ssh
+    - name: Reload Firewall
+      command: firewall-cmd --reload
+        
+
+- name: Install MariaDB
+  hosts: db_node
+  become: yes
+  become_user: root
+  tasks:
+    - name: Install MariaDB
+      yum: 
+        name: mariadb-server
+        state: present
+    - name: Start MariaDB
+      service: 
+        name: mariadb
+        state: started
+    - name: Enable MariaDB
+      systemd:
+        name: mariadb
+        state: started
+    - name: Install MySQL-python
+      yum: 
+        name: MySQL-python
+    - name: Configure Firewall for DB
+      command: firewall-cmd --permanent --zone=public --add-port=3306/tcp
+    - name: Reload DB Firewall
+      command: firewall-cmd --reload
+
+- name: Configure MariaDB
+  hosts: db_node
+  become: yes
+  become_user: root
+  tasks:
+    - name: Create Database with the name of 'ecomdb'
+      mysql_db:
+        name: ecomdb
+        state: present
+    - name: Create User, Set Password and Grant all privilege to said user
+      mysql_user:
+        name: ecomuser
+        password: ecompassword
+        host: 192.168.1.110
+        priv: '*.*:ALL,GRANT'
+        state: present
+    - name: Flush other privilege
+      command: 'mysql -e "FLUSH PRIVILEGES;"'
+
+- name: Load Test Data to MariaDB.
+  hosts: db_node
+  become: yes
+  become_user: root
+  tasks:
+  - name: Load the script
+    copy:
+      dest: "/home/osboxes/db-load-script.sql"
+      content: |
+        USE ecomdb;
+        CREATE TABLE products (id mediumint(8) unsigned NOT NULL auto_increment,Name varchar(255) default NULL,Price varchar(255) default NULL, ImageUrl varchar(255) default NULL,PRIMARY KEY (id)) AUTO_INCREMENT=1;
+
+        INSERT INTO products (Name,Price,ImageUrl) VALUES ("Laptop","100","c-1.png"),("Drone","200","c-2.png"),("VR","300","c-3.png"),("Tablet","50","c-5.png"),("Watch","90","c-6.png"),("Phone Covers","20","c-7.png"),("Phone","80","c-8.png"),("Laptop","150","c-4.png");
+  - name: Restore database
+    mysql_db:
+      login_user: ecomuser
+      login_password: ecompassword
+      name: all
+      state: import
+      target: /home/osboxes/db-load-script.sql
+
+- name: Install Apache PHP PHP-MySQL
+  hosts: web_node
+  become: yes
+  become_user: root
+  tasks:
+    - name: Install All Packages
+      yum: 
+        name: 
+          - httpd
+          - php
+          - php-mysql
+        state: present
+    - name: Configure Firewall for DB
+      command: firewall-cmd --permanent --zone=public --add-port=80/tcp
+    - name: Reload DB Firewall
+      command: firewall-cmd --reload
+    - name: Ensure HTTPD configuration is set to index.php
+      replace:
+        path: /etc/httpd/conf/httpd.conf
+        regexp: 'DirectoryIndex index.html'
+        replace: DirectoryIndex index.php
+    - name: Start HTTPD
+      service: 
+        name: httpd
+        state: started
+    - name: Enable HTTPD
+      systemd:
+        name: httpd
+        state: started
+
+- name: Install Git and Code
+  hosts: web_node
+  become: yes
+  become_user: root
+  tasks:
+    - name: Install git
+      yum: 
+        name: git
+        state: present
+    - name: Clone code
+      git:
+        repo: 'https://github.com/kodekloudhub/learning-app-ecommerce.git'
+        dest: /var/www/html/
+    - name: Web server and DB server connection are available
+      replace:
+        path: /var/www/html/index.php
+        regexp: '172.20.1.101'
+        replace: 198.168.1.111

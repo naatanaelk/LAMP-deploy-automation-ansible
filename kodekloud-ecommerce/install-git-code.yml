@@ -1,0 +1,18 @@
+- name: Install Git and Code
+  hosts: test
+  become: yes
+  become_user: root
+  tasks:
+    - name: Install git
+      yum: 
+        name: git
+        state: present
+    - name: Clone code
+      git:
+        repo: 'https://github.com/kodekloudhub/learning-app-ecommerce.git'
+        dest: /var/www/html/
+    - name: Web server and DB server connection are available
+      replace:
+        path: /var/www/html/index.php
+        regexp: '172.20.1.101'
+        replace: localhost

@@ -1,0 +1,29 @@
+- name: Install Apache PHP PHP-MySQL
+  hosts: test
+  become: yes
+  become_user: root
+  tasks:
+    - name: Install All Packages
+      yum: 
+        name: 
+          - httpd
+          - php
+          - php-mysql
+        state: present
+    - name: Configure Firewall for DB
+      command: firewall-cmd --permanent --zone=public --add-port=80/tcp
+    - name: Reload DB Firewall
+      command: firewall-cmd --reload
+    - name: Ensure HTTPD configuration is set to index.php
+      replace:
+        path: /etc/httpd/conf/httpd.conf
+        regexp: 'DirectoryIndex index.html'
+        replace: DirectoryIndex index.php
+    - name: Start HTTPD
+      service: 
+        name: httpd
+        state: started
+    - name: Enable HTTPD
+      systemd:
+        name: httpd
+        state: started

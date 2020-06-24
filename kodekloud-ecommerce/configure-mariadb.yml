@@ -1,0 +1,18 @@
+- name: Configure MariaDB
+  hosts: test
+  become: yes
+  become_user: root
+  tasks:
+    - name: Create Database with the name of 'ecomdb'
+      mysql_db:
+        name: ecomdb
+        state: present
+    - name: Create User, Set Password and Grant all privilege to said user
+      mysql_user:
+        name: ecomuser
+        password: ecompassword
+        host: localhost
+        priv: '*.*:ALL, GRANT'
+        state: present
+    - name: Flush other privilege
+      command: 'mysql -e "FLUSH PRIVILEGES;"'

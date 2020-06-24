@@ -1,0 +1,15 @@
+- name: Install and Configure Firewall on All Node.
+  hosts: test
+  tasks:
+    - name: Install Firewall
+      yum: 
+        name: firewalld
+        state: present
+    - name: Start Firewall
+      service: 
+        name: firewalld
+        state: started
+    - name: Enable Firewall
+      systemd:
+        name: firewalld
+        state: started
